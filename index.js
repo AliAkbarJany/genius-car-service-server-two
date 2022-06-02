@@ -20,6 +20,7 @@ async function run () {
     try{
         await client.connect();
         const serviceCollection=client.db('geniusCarTwo').collection('servicTwo')
+        const orderCollection=client.db('geniusCarTwo').collection('order')
 
         // READ/get (multiple) user...
         app.get('/service',async(req,res)=>{
@@ -36,7 +37,7 @@ async function run () {
             const service=await serviceCollection.findOne(query)
             res.send(service)
         })
-
+ 
         // psot/create data//
         app.post('/service',async(req,res)=>{
             const newService=req.body;
@@ -51,6 +52,13 @@ async function run () {
             const query={_id:ObjectId(id)}
             const result=await serviceCollection.deleteOne(query)
             res.send(result);
+        })
+        
+        // Order...
+        app.post('/order',async(req,res)=>{
+            const order=req.body;
+            const result=await orderCollection.insertOne(order);
+            res.send(result)
         })
     }
     finally{

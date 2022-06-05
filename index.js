@@ -125,6 +125,10 @@ app.get('/', (req, res) => {
     res.send('Running Genius Server')
 })
 
+app.get('/hero',(req,res)=>{
+    res.send('Hero is going to mett with Heroku')
+})
+
 // READ (single) document...
 app.get('/user/:userId', (req, res) => {
     console.log(req.params)

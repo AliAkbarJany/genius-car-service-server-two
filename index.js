@@ -1,8 +1,9 @@
-const express=require('express')
-const cors=require('cors')
+const express = require('express')
+const cors = require('cors')
+const jwt = require('jsonwebtoken')
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const app=express()
-const port=process.env.PORT||5000;
+const app = express()
+const port = process.env.PORT || 5000;
 
 require('dotenv').config();
 
@@ -15,53 +16,104 @@ app.use(express.json())
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASS}@cluster0.f7zhn.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-async function run () {
+async function run() {
 
-    try{
+    try {
         await client.connect();
-        const serviceCollection=client.db('geniusCarTwo').collection('servicTwo')
-        const orderCollection=client.db('geniusCarTwo').collection('order')
+        const serviceCollection = client.db('geniusCarTwo').collection('servicTwo')
+        const orderCollection = client.db('geniusCarTwo').collection('order')
+        // AUTH...
 
+        function verifyJWT(req, res, next) {
+            const authHeader = req.headers.authorization;
+            if (!authHeader) {
+                return res.status(401).send({ massage: 'unahthorized access' })
+            }
+            const token = authHeader.split(' ')[1]
+            jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+                if (err) {
+                    return res.status(403).send({ message: 'forbidden Access' })
+                }
+                console.log('decoded', decoded)
+                req.decoded = decoded;
+                next()
+            })
+            // console.log('INSIDE VERIFYjwt', authHeader)
+            
+        }
+
+        app.post('getToken', async (req, res) => {
+            const user = req.body;
+            const accessToken = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, { expiresIn: '1d' })
+            res.send({ accessToken })
+        })
+
+        // SERVICES API.............................
         // READ/get (multiple) user...
-        app.get('/service',async(req,res)=>{
-            const query={}
-            const cursor=serviceCollection.find(query);
-            const services=await cursor.toArray()
+        app.get('/service', async (req, res) => {
+            const query = {}
+            const cursor = serviceCollection.find(query);
+            const services = await cursor.toArray()
             res.send(services)
         })
 
         // READ/get (single) user...
-        app.get('/service/:id',async(req,res)=>{
-            const id=req.params.id;
-            const query={_id:ObjectId(id)}
-            const service=await serviceCollection.findOne(query)
+        app.get('/service/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const service = await serviceCollection.findOne(query)
             res.send(service)
         })
- 
+
         // psot/create data//
-        app.post('/service',async(req,res)=>{
-            const newService=req.body;
+        app.post('/service', async (req, res) => {
+            const newService = req.body;
             console.log(newService)
-            const result= await serviceCollection.insertOne(newService)
+            const result = await serviceCollection.insertOne(newService)
             res.send(newService)
         })
 
         // Delete ...
-        app.delete('/service/:id',async(req,res)=>{
-            const id=req.params.id;
-            const query={_id:ObjectId(id)}
-            const result=await serviceCollection.deleteOne(query)
+        app.delete('/service/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: ObjectId(id) }
+            const result = await serviceCollection.deleteOne(query)
             res.send(result);
         })
-        
-        // Order...
-        app.post('/order',async(req,res)=>{
-            const order=req.body;
-            const result=await orderCollection.insertOne(order);
+
+        // Order collection api...
+
+        app.get('/order', verifyJWT, async (req, res) => {
+            // const authHeader=req.headers.authorization;
+            // console.log(authHeader)
+            const decodedEmail = req.decoded.email
+            const email = req.query.email;
+            if (email === decodedEmail) {
+                const query = { email };
+                const cursor = orderCollection.find(query)
+                const orders = await cursor.toArray()
+                res.send(orders)
+            }
+            else{
+                return res.status(403).send({message:'forbidden access'})
+            }
+            // console.log(req.query)
+            // console.log(req.query.email)
+
+            /*
+            const query={email};
+            const cursor=orderCollection.find(query)
+            const orders=await cursor.toArray()
+            res.send(orders)*/
+        })
+
+        app.post('/order', async (req, res) => {
+            const order = req.body;
+            const result = await orderCollection.insertOne(order);
             res.send(result)
         })
     }
-    finally{
+    finally {
         // await client.close()
     }
 
@@ -69,18 +121,18 @@ async function run () {
 run().catch(console.dir)
 
 
-app.get('/',(req,res)=>{
+app.get('/', (req, res) => {
     res.send('Running Genius Server')
 })
 
 // READ (single) document...
-app.get('/user/:userId',(req,res)=>{
+app.get('/user/:userId', (req, res) => {
     console.log(req.params)
     // const id=req.params.id;
     // console.log(id)
     res.send("single user READ")
 })
 
-app.listen(port,()=>{
-    console.log('Listening to port',port)
+app.listen(port, () => {
+    console.log('Listening to port', port)
 })

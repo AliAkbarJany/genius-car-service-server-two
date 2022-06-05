@@ -126,7 +126,7 @@ app.get('/', (req, res) => {
 })
 
 app.get('/hero',(req,res)=>{
-    res.send('Hero is going to mett with Heroku')
+    res.send('Hero is going to meet with Heroku')
 })
 
 // READ (single) document...
